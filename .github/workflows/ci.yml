@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Full statement coverage. Every test here establishes a real peer connection
+  # — real ICE, real DTLS, real SCTP — between two peers in one process; what a
+  # caller supplies instead is the signalling, which this package deliberately
+  # does not do.
+  COVER_MIN: "100.0"
+
+jobs:
+  # ── Native ────────────────────────────────────────────────────────────────
+  native:
+    name: native ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: test (+cover)
+        env:
+          CGO_ENABLED: "0"
+          GOWORK: "off"
+        run: |
+          set -euo pipefail
+          # The wasm e2e tests run in their own job (they need Node); skip
+          # them here.
+          go test -mod=mod -timeout 600s -covermode=atomic \
+            -coverprofile=cover.out ./...
+          go tool cover -func=cover.out | tail -1
+      - name: coverage gate
+        run: |
+          set -euo pipefail
+          pct=$(go tool cover -func=cover.out | awk '/^total:/ {gsub("%","",$3); print $3}')
+          echo "total coverage: ${pct}% (min ${COVER_MIN}%)"
+          awk -v p="$pct" -v m="$COVER_MIN" \
+            'BEGIN { exit (p+0 >= m+0) ? 0 : 1 }' \
+            || { echo "coverage ${pct}% below floor ${COVER_MIN}%"; exit 1; }
