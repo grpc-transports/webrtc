@@ -1,6 +1,6 @@
 module github.com/grpc-transports/webrtc
 
-go 1.26.4
+go 1.27.1
 
 require (
 	github.com/pion/datachannel v1.6.3
