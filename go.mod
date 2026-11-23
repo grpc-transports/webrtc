@@ -4,7 +4,7 @@ go 1.27.2
 
 require (
 	github.com/pion/datachannel v1.6.4
-	github.com/pion/webrtc/v4 v4.2.27
+	github.com/pion/webrtc/v4 v4.2.29
 	google.golang.org/grpc v1.85.0
 )
 
